@@ -9,7 +9,9 @@ import com.accenture.test.application.usecase.product.AddProductUseCase;
 import com.accenture.test.application.usecase.product.DeleteProductUseCase;
 import com.accenture.test.application.usecase.product.UpdateProductNameUseCase;
 import com.accenture.test.application.usecase.product.UpdateProductStockUseCase;
+import com.accenture.test.domain.model.Branch;
 import com.accenture.test.domain.model.Franchise;
+import com.accenture.test.domain.model.Product;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -82,14 +84,14 @@ public class ProductController {
                 .build();
     }
 
-    private List<BranchResponse> mapBranches(List<com.accenture.test.domain.model.Branch> branches) {
+    private List<BranchResponse> mapBranches(List<Branch> branches) {
         if (branches == null) return List.of();
         return branches.stream()
                 .map(this::mapBranch)
                 .toList();
     }
 
-    private BranchResponse mapBranch(com.accenture.test.domain.model.Branch branch) {
+    private BranchResponse mapBranch(Branch branch) {
         return BranchResponse.builder()
                 .id(branch.getId())
                 .name(branch.getName())
@@ -97,14 +99,14 @@ public class ProductController {
                 .build();
     }
 
-    private List<ProductResponse> mapProducts(List<com.accenture.test.domain.model.Product> products) {
+    private List<ProductResponse> mapProducts(List<Product> products) {
         if (products == null) return List.of();
         return products.stream()
                 .map(this::mapProduct)
                 .toList();
     }
 
-    private ProductResponse mapProduct(com.accenture.test.domain.model.Product product) {
+    private ProductResponse mapProduct(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())

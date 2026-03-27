@@ -2,19 +2,23 @@ package com.accenture.test.config;
 
 import com.mongodb.reactivestreams.client.MongoClient;
 import com.mongodb.reactivestreams.client.MongoClients;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.config.AbstractReactiveMongoConfiguration;
 
 @Configuration
 public class MongoReactiveConfig extends AbstractReactiveMongoConfiguration {
 
+    private final Dotenv dotenv = Dotenv.load();
+
     @Override
     public MongoClient reactiveMongoClient() {
-        return MongoClients.create("mongodb+srv://mendoza_db_user:iS4BXTZmC4z9nKXX@franchise-cluster.udhr2xv.mongodb.net/franchisedb?retryWrites=true&w=majority&appName=franchise-cluster");
+        String uri = dotenv.get("MONGODB_URI");
+        return MongoClients.create(uri);
     }
 
     @Override
     protected String getDatabaseName() {
-        return "franchisedb";
+        return dotenv.get("MONGODB_DB");
     }
 }
