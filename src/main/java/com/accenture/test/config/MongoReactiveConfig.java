@@ -9,24 +9,29 @@ import org.springframework.data.mongodb.config.AbstractReactiveMongoConfiguratio
 @Configuration
 public class MongoReactiveConfig extends AbstractReactiveMongoConfiguration {
 
-    private final Dotenv dotenv = Dotenv.load();
+    private final Dotenv dotenv;
+
+    public MongoReactiveConfig() {
+        this.dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+    }
 
     @Override
     public MongoClient reactiveMongoClient() {
-        Dotenv dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-
-        String mongoUri = dotenv.get("MONGO_URI", System.getenv("MONGO_URI"));
+        String mongoUri = System.getenv("MONGO_URI");
+        if (mongoUri == null || mongoUri.isEmpty()) {
+            mongoUri = dotenv.get("MONGO_URI");
+        }
         return MongoClients.create(mongoUri);
     }
 
     @Override
     protected String getDatabaseName() {
-        Dotenv dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-
-        return dotenv.get("MONGODB_DB", System.getenv("MONGODB_DB"));
+        String database = System.getenv("MONGODB_DB");
+        if (database == null || database.isEmpty()) {
+            database = dotenv.get("MONGODB_DB");
+        }
+        return database;
     }
 }
