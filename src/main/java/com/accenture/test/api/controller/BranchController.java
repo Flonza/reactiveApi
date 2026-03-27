@@ -1,12 +1,13 @@
 package com.accenture.test.api.controller;
 
-import com.accenture.test.application.dto.request.FranchiseRequest;
-import com.accenture.test.application.dto.response.*;
-import com.accenture.test.application.usecase.franchise.CreateFranchiseUseCase;
-import com.accenture.test.application.usecase.franchise.UpdateFranchiseNameUseCase;
-import com.accenture.test.application.usecase.product.GetTopStockProductUseCase;
+import com.accenture.test.application.dto.request.BranchRequest;
+import com.accenture.test.application.dto.response.BranchResponse;
+import com.accenture.test.application.dto.response.FranchiseResponse;
+import com.accenture.test.application.dto.response.GeneralResponse;
+import com.accenture.test.application.dto.response.ProductResponse;
+import com.accenture.test.application.usecase.branch.AddBranchUseCase;
+import com.accenture.test.application.usecase.branch.UpdateBranchNameUseCase;
 import com.accenture.test.domain.model.Franchise;
-import com.accenture.test.domain.model.ProductBranchResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,46 +18,32 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/franchises")
+@RequestMapping("/api/franchises/{franchiseId}/branches")
 @RequiredArgsConstructor
-public class FranchiseController {
+public class BranchController {
 
-    private final CreateFranchiseUseCase createFranchiseUseCase;
-    private final UpdateFranchiseNameUseCase updateFranchiseNameUseCase;
-    private final GetTopStockProductUseCase getTopStockProductUseCase;
-
+    private final AddBranchUseCase addBranchUseCase;
+    private final UpdateBranchNameUseCase updateBranchNameUseCase;
 
     @PostMapping
-    public Mono<ResponseEntity<GeneralResponse<FranchiseResponse>>> create(
-            @Valid @RequestBody FranchiseRequest request) {
-        return createFranchiseUseCase.execute(request)
+    public Mono<ResponseEntity<GeneralResponse<FranchiseResponse>>> addBranch(
+            @PathVariable String franchiseId,
+            @Valid @RequestBody BranchRequest request) {
+        return addBranchUseCase.execute(franchiseId, request)
                 .map(franchise -> ResponseEntity
                         .status(HttpStatus.CREATED)
                         .body(GeneralResponse.created(toResponse(franchise))));
     }
 
-
-    @PatchMapping("/{franchiseId}/name")
+    @PatchMapping("/{branchId}/name")
     public Mono<ResponseEntity<GeneralResponse<FranchiseResponse>>> updateName(
             @PathVariable String franchiseId,
+            @PathVariable String branchId,
             @RequestParam String newName) {
-        return updateFranchiseNameUseCase.execute(franchiseId, newName)
+        return updateBranchNameUseCase.execute(franchiseId, branchId, newName)
                 .map(franchise -> ResponseEntity
                         .ok(GeneralResponse.success(toResponse(franchise))));
     }
-
-
-    @GetMapping("/{franchiseId}/top-stock")
-    public Mono<ResponseEntity<GeneralResponse<List<ProductBranchResponse>>>> getTopStock(
-            @PathVariable String franchiseId) {
-        return getTopStockProductUseCase.execute(franchiseId)
-                .map(this::toProductBranchResponse)
-                .collectList()
-                .map(list -> ResponseEntity
-                        .ok(GeneralResponse.success(list)));
-    }
-
-
 
     private FranchiseResponse toResponse(Franchise franchise) {
         return FranchiseResponse.builder()
@@ -93,16 +80,6 @@ public class FranchiseController {
                 .id(product.getId())
                 .name(product.getName())
                 .stock(product.getStock())
-                .build();
-    }
-
-    private ProductBranchResponse toProductBranchResponse(ProductBranchResult result) {
-        return ProductBranchResponse.builder()
-                .branchId(result.getBranchId())
-                .branchName(result.getBranchName())
-                .productId(result.getProductId())
-                .productName(result.getProductName())
-                .stock(result.getStock())
                 .build();
     }
 }

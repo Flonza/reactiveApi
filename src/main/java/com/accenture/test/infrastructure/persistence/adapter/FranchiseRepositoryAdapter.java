@@ -1,5 +1,9 @@
 package com.accenture.test.infrastructure.persistence.adapter;
 
+import com.accenture.test.api.exception.custom.BranchNotFoundException;
+import com.accenture.test.api.exception.custom.FranchiseNotFoundException;
+import com.accenture.test.api.exception.custom.InvalidStockException;
+import com.accenture.test.api.exception.custom.ProductNotFoundException;
 import com.accenture.test.domain.model.Branch;
 import com.accenture.test.domain.model.Franchise;
 import com.accenture.test.domain.model.Product;
@@ -24,36 +28,32 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
     private final IFranchiseMongoRepository mongoRepository;
     private final FranchiseMapper mapper;
 
-    // ─── Criterio 2 — Guardar franquicia ────────────────────────────
     @Override
     public Mono<Franchise> save(Franchise franchise) {
         return mongoRepository.save(mapper.toDocument(franchise))
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 2 — Buscar por ID ─────────────────────────────────
     @Override
     public Mono<Franchise> findById(String franchiseId) {
         return mongoRepository.findById(franchiseId)
                 .map(mapper::toModel)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ));
     }
 
-    // ─── Utilidad — Listar todas ─────────────────────────────────────
     @Override
     public Flux<Franchise> findAll() {
         return mongoRepository.findAll()
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 3 — Agregar sucursal ──────────────────────────────
     @Override
     public Mono<Franchise> addBranch(String franchiseId, Branch branch) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Branch branchWithId = Branch.builder()
@@ -70,12 +70,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 4 — Agregar producto ──────────────────────────────
     @Override
     public Mono<Franchise> addProduct(String franchiseId, String branchId, Product product) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -83,9 +82,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                     Branch branch = franchise.getBranches().stream()
                             .filter(b -> b.getId().equals(branchId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Sucursal no encontrada con ID: " + branchId
-                            ));
+                            .orElseThrow(() -> new BranchNotFoundException(branchId));
+
+                    if (product.getStock() < 0) {
+                        throw new InvalidStockException(product.getStock());
+                    }
 
                     Product productWithId = Product.builder()
                             .id(UUID.randomUUID().toString())
@@ -100,12 +101,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 5 — Eliminar producto ─────────────────────────────
     @Override
     public Mono<Franchise> deleteProduct(String franchiseId, String branchId, String productId) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -113,9 +113,14 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                     Branch branch = franchise.getBranches().stream()
                             .filter(b -> b.getId().equals(branchId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Sucursal no encontrada con ID: " + branchId
-                            ));
+                            .orElseThrow(() -> new BranchNotFoundException(branchId));
+
+                    boolean productExists = branch.getProducts().stream()
+                            .anyMatch(p -> p.getId().equals(productId));
+
+                    if (!productExists) {
+                        throw new ProductNotFoundException(productId);
+                    }
 
                     List<Product> updatedProducts = branch.getProducts().stream()
                             .filter(p -> !p.getId().equals(productId))
@@ -128,12 +133,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 6 — Modificar stock ───────────────────────────────
     @Override
     public Mono<Franchise> updateProductStock(String franchiseId, String branchId, String productId, int newStock) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -141,16 +145,16 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                     Branch branch = franchise.getBranches().stream()
                             .filter(b -> b.getId().equals(branchId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Sucursal no encontrada con ID: " + branchId
-                            ));
+                            .orElseThrow(() -> new BranchNotFoundException(branchId));
 
                     Product product = branch.getProducts().stream()
                             .filter(p -> p.getId().equals(productId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Producto no encontrado con ID: " + productId
-                            ));
+                            .orElseThrow(() -> new ProductNotFoundException(productId));
+
+                    if (newStock < 0) {
+                        throw new InvalidStockException(newStock);
+                    }
 
                     product.setStock(newStock);
 
@@ -159,12 +163,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Criterio 7 — Producto con más stock por sucursal ───────────
     @Override
     public Flux<ProductBranchResult> getTopStockProductPerBranch(String franchiseId) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMapMany(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -174,7 +177,7 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                             .map(branch -> {
                                 Product topProduct = branch.getProducts().stream()
                                         .max(Comparator.comparingInt(Product::getStock))
-                                        .orElseThrow();
+                                        .orElseThrow(() -> new ProductNotFoundException(branch.getId()));
 
                                 return ProductBranchResult.builder()
                                         .branchId(branch.getId())
@@ -190,12 +193,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 });
     }
 
-    // ─── Plus — Actualizar nombre franquicia ─────────────────────────
     @Override
     public Mono<Franchise> updateFranchiseName(String franchiseId, String newName) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -205,12 +207,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Plus — Actualizar nombre sucursal ───────────────────────────
     @Override
     public Mono<Franchise> updateBranchName(String franchiseId, String branchId, String newName) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -218,9 +219,7 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                     Branch branch = franchise.getBranches().stream()
                             .filter(b -> b.getId().equals(branchId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Sucursal no encontrada con ID: " + branchId
-                            ));
+                            .orElseThrow(() -> new BranchNotFoundException(branchId));
 
                     branch.setName(newName);
 
@@ -229,12 +228,11 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                 .map(mapper::toModel);
     }
 
-    // ─── Plus — Actualizar nombre producto ───────────────────────────
     @Override
     public Mono<Franchise> updateProductName(String franchiseId, String branchId, String productId, String newName) {
         return mongoRepository.findById(franchiseId)
                 .switchIfEmpty(Mono.error(
-                        new RuntimeException("Franquicia no encontrada con ID: " + franchiseId)
+                        new FranchiseNotFoundException(franchiseId)
                 ))
                 .flatMap(document -> {
                     Franchise franchise = mapper.toModel(document);
@@ -242,16 +240,12 @@ public class FranchiseRepositoryAdapter implements IFranchiseRepository {
                     Branch branch = franchise.getBranches().stream()
                             .filter(b -> b.getId().equals(branchId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Sucursal no encontrada con ID: " + branchId
-                            ));
+                            .orElseThrow(() -> new BranchNotFoundException(branchId));
 
                     Product product = branch.getProducts().stream()
                             .filter(p -> p.getId().equals(productId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException(
-                                    "Producto no encontrado con ID: " + productId
-                            ));
+                            .orElseThrow(() -> new ProductNotFoundException(productId));
 
                     product.setName(newName);
 
