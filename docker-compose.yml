@@ -8,8 +8,8 @@ services:
     container_name: franchise-api
     ports:
       - "8081:8081"
-    environment:
-      SPRING_DATA_MONGODB_URI: 'mongodb+srv://mendoza_db_user:iS4BXTZmC4z9nKXX@franchise-cluster.udhr2xv.mongodb.net/franchisedb?retryWrites=true&w=majority&appName=franchise-cluster'
+    env_file:
+      - .env
     networks:
       - franchise-network
     restart: unless-stopped

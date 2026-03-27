@@ -19,6 +19,4 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 
 EXPOSE 8081
 
-ENTRYPOINT ["java", \
-  "-Dspring.data.mongodb.uri=mongodb+srv://mendoza_db_user:iS4BXTZmC4z9nKXX@franchise-cluster.udhr2xv.mongodb.net/franchisedb?retryWrites=true&w=majority&appName=franchise-cluster", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
