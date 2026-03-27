@@ -13,12 +13,20 @@ public class MongoReactiveConfig extends AbstractReactiveMongoConfiguration {
 
     @Override
     public MongoClient reactiveMongoClient() {
-        String uri = dotenv.get("MONGODB_URI");
-        return MongoClients.create(uri);
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+
+        String mongoUri = dotenv.get("MONGO_URI", System.getenv("MONGO_URI"));
+        return MongoClients.create(mongoUri);
     }
 
     @Override
     protected String getDatabaseName() {
-        return dotenv.get("MONGODB_DB");
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+
+        return dotenv.get("MONGODB_DB", System.getenv("MONGODB_DB"));
     }
 }
